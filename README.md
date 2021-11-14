@@ -9,7 +9,6 @@ the **scipt** folder is for shell script
 
 the **log** folder to place logging
 
-
 ***
 ## src:
 **main.py:** controlling program
