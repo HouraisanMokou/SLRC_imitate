@@ -8,12 +8,19 @@ import joblib
 """
 to control the program,
 control the paths and start to train or test
-shell in '../script' would run this file  
+shell (*.sh) in '../script' would run this file  
 """
 
+
 def get_args():
+    """
+    get arguments from sys
+    :return:
+    """
+
+    # arguments for IO/ controlling
     parser = argparse.ArgumentParser(description='Run the models')
-    parser.add_argument('gpu',type=str,default='0',help='the gpu used')
+    parser.add_argument('gpu', type=str, default='0', help='set CUDA_VISIBLE_DEVICES')
 
     parser.add_argument('--data_directory', type=str, default='../data', help='original data directory')
     parser.add_argument('--save_directory', type=str, default='../result', help='Save data directory')
@@ -32,8 +39,23 @@ def get_args():
 
     parser.add_argument('--stage', type=str, default='train', help='train/test')
     parser.add_argument('--logging_directory',
-                        type=str, default='../result',help='the directory the log would be saved to')
-    parser.add_argument('--random_state',type=int,default=2021,help='the random seed')
+                        type=str, default='../result', help='the directory the log would be saved to')
+    parser.add_argument('--random_state', type=int, default=2021, help='the random seed')
 
-if __name__=='__main__':
+    # arguments for reader
+    parser.add_argument('sep',default='\t',help='sep of data set file')
+
+    # arguments for runner
+    parser.add_argument('--epoch', type=int, default=200,
+                        help='number of epochs')
+    parser.add_argument('--test_epoch', type=int, default=-1,
+                        help='test with a period of some epoch (-1 means no test)')
+    parser.add_argument('--stop',type=int,default=5,help='stop cnt when accuracy down continuously')
+    parser.add_argument('--lr', type=float, default=1e-3,help='learning rate')
+    parser.add_argument('--l2', type=float, default=0,help='l2 regularization in optimizer')
+    parser.add_argument('--batch_size', type=int, default=256,help='batch size while training')
+    parser.add_argument('--eval_batch_size', type=int, default=256,help='batch size while testing/ validating')
+
+
+if __name__ == '__main__':
     get_args()
