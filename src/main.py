@@ -53,9 +53,56 @@ def get_args():
     parser.add_argument('--stop',type=int,default=5,help='stop cnt when accuracy down continuously')
     parser.add_argument('--lr', type=float, default=1e-3,help='learning rate')
     parser.add_argument('--l2', type=float, default=0,help='l2 regularization in optimizer')
-    parser.add_argument('--batch_size', type=int, default=256,help='batch size while training')
-    parser.add_argument('--eval_batch_size', type=int, default=256,help='batch size while testing/ validating')
+    parser.add_argument('--batch_size', type=int, default=256,help='batch size while training/ validating')
+    parser.add_argument('--eval_batch_size', type=int, default=256,help='batch size while testing')
+
+    args=parser.parse_known_args()
+    return args
+
+
+def make_corpus(args):
+    """
+    to make corpus by calling the common.reader
+    if load_corpus is True, load corpus from path
+    otherwise, load data from data directory and save to corpus path
+    :param args: arguments.
+    relate with: corpus_path, load_corpus, sep, data_directory, dataset_name
+    :return:
+    """
+    pass
+
+def train(args):
+    """
+    call the runner to set the weights (initial or from local model), build the model,
+    move the model and data to gpu, and then start train, finally save the model
+    :param args: arguments.
+    relate with: gpu, save_directory, load_model, model_name, epoch,
+                 test_epoch, stop, lr, l2, batch_size
+    :return:
+    """
+    pass
+
+def test(args):
+    """
+    call the runner to set the weights from local model, build the model,
+    move the model and data to gpu, and then start test, logging the result
+    :param args: arguments.
+    relate with: gpu, save_directory, load_model, model_name, epoch,
+                 test_epoch, stop, lr, l2, eval_batch_size
+    :return:
+    """
+    pass
+
+def main(args):
+    """
+    The main controlling method. Set random seed, prepare hardware and logging, read data and then make corpus.
+    Finally, start train or test.
+    :param args: the arguments gets from get_args
+    :return: no return
+    """
+    pass
 
 
 if __name__ == '__main__':
-    get_args()
+    args=get_args()
+    main(args)

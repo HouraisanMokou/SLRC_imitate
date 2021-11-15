@@ -2,6 +2,9 @@ from common.constants import *
 import os
 import pandas as pd
 
+
+root='../data\data_order\order.txt'
+
 def process_files(src:str):
     """
     process the src file into data in four files: train.csv, test.csv, val.csv, item_meta.csv
@@ -18,6 +21,8 @@ def process_files(src:str):
     :param src: the file to process
     :return: no turn
     """
-root='../data\data_order\order.txt'
+    pass
+
+
 
 
