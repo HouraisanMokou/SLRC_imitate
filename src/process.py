@@ -12,7 +12,7 @@ def process_files(src: str):
 
     train.csv: user_id \t item_id \t time
     test.csv: user_id \t item_id \t time \t neg_items
-    cal.csv: user_id \t item_id \t time \t neg_items
+    val.csv: user_id \t item_id \t time \t neg_items
 
     neg_items is a list of random items not include ground truth items (amount 20, for example)
 
