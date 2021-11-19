@@ -28,13 +28,12 @@ class SLRC(nn.Module):
         :param m: module
         :return:
         """
-        if isinstance(m,nn.Linear):
-            nn.init.normal_(m.weight,mean=0,std=0.01)
-            if m.bias is not None:
-                nn.init.normal_(m.bias,mean=0,std=0.01)
-        elif isinstance(m,nn.Embedding):
+        if isinstance(m, nn.Linear):
             nn.init.normal_(m.weight, mean=0, std=0.01)
-
+            if m.bias is not None:
+                nn.init.normal_(m.bias, mean=0, std=0.01)
+        elif isinstance(m, nn.Embedding):
+            nn.init.normal_(m.weight, mean=0, std=0.01)
 
     def __init__(self, args, corpus: reader):
         """
@@ -46,12 +45,14 @@ class SLRC(nn.Module):
         self.emb_size = args.emb_size
         self.time_scale = args.time_scale
         self.user_num = corpus.n_users
-        self.item = corpus.n_items
+        self.item_num = corpus.n_items
 
         self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
         self.model_path = os.path.join(args.save_directory, args.model_name, args.model_file_name)
         self.optimizer = None
 
+        self._define_weights()
+        self.total_param = count_var(self)
         super(SLRC, self).__init__()
 
     def _define_weights(self) -> NoReturn:
@@ -78,15 +79,36 @@ class SLRC(nn.Module):
         """
         pass
 
-    def forward(self):
+    def forward(self, feed_dict):
         """
         :return:
         """
-        pass
+        base = self.forward_excit(feed_dict)
+        excitation = self.forward_excit(feed_dict)
+        prediction = base + excitation
+        return {'prediction': prediction}
 
-    def loss(self):
+    def _forward_excit(self, feed_dict):
+        """
+        :param feed_dict:
+        :return: excitation base of lambda
+        """
+        return 0
+
+    def _forward_CF(self, feed_dict):
+        """
+        :param feed_dict:
+        :return: base of lambda
+        """
+        return 0
+
+    def loss(self, out_dict: dict):
         """
         loss function
         :return:
         """
-        pass
+        predictions = out_dict['prediction']
+        pos = predictions[:, 0]
+        neg = predictions[:, 1]
+        loss = -(pos - neg).sigmoid().log().mean()
+        return loss
