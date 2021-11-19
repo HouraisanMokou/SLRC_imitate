@@ -28,12 +28,13 @@ class SLRC(nn.Module):
         :param m: module
         :return:
         """
-        if 'Linear' in str(type(m)):
-            nn.init.normal_(m.weight, mean=0.0, std=0.01)
+        if isinstance(m,nn.Linear):
+            nn.init.normal_(m.weight,mean=0,std=0.01)
             if m.bias is not None:
-                nn.init.normal_(m.bias, mean=0.0, std=0.01)
-        elif 'Embedding' in str(type(m)):
-            nn.init.normal_(m.weight, mean=0.0, std=0.01)
+                nn.init.normal_(m.bias,mean=0,std=0.01)
+        elif isinstance(m,nn.Embedding):
+            nn.init.normal_(m.weight, mean=0, std=0.01)
+
 
     def __init__(self, args, corpus: reader):
         """
@@ -61,7 +62,7 @@ class SLRC(nn.Module):
         self._init_cf_weights()
         self._init_hawks_weights()
 
-    def _define_cf_weights(self) -> NoReturn:
+    def _init_cf_weights(self) -> NoReturn:
         """
         init weights related with CF
         would overwrite by the son class of SLRC
@@ -69,9 +70,10 @@ class SLRC(nn.Module):
         """
         pass
 
-    def _define_hawks_weights(self):
+    def _init_hawks_weights(self):
         """
         init weights related with Hawks
+        may overwrite by the son class of SLRC
         :return:
         """
         pass

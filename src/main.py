@@ -26,7 +26,7 @@ def get_args():
     parser.add_argument('--save_directory', type=str, default='../result', help='Save data directory')
 
     parser.add_argument('--load_model', type=bool, default=False, help='whether to load model already exist')
-    parser.add_argument('--model_name', type=str, default='Grocery_and_Gourmet_Food', help='the name of model')
+    parser.add_argument('--model_name', type=str, default='SLRC_BPR', help='the name of model')
     parser.add_argument('--dataset_name', type=str, default='Grocery_and_Gourmet_Food', help='the name of data set')
     # the path of data set should be data_directory/dataset_name
     # the model would be saved to save_directory/model_name
@@ -61,7 +61,6 @@ def get_args():
     parser.add_argument('--eval_batch_size', type=int, default=256, help='batch size while testing')
     parser.add_argument('--emb_size', type=int, default=64, help='the length of embedding vector')
     parser.add_argument('--time_scale', type=int, default=256, help='the scale for time intervals')
-    parser.add_argument('--CF_method', type=str, default='BPR', help='the method of CF')
     args = parser.parse_known_args()
     return args
 
