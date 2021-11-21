@@ -56,7 +56,7 @@ class Runner():
         if model.optimizer ==None:
             self._set_optimizer(model)
 
-        dataset.actions_before_epoch()
+        dataset.shuffle_neg()
 
         dl=DataLoader(dataset, batch_size=self.batch_size, shuffle=True, collate_fn=dataset._collate_batch,
                       num_workers=self.num_workers,pin_memory=self.pin_memory)

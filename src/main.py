@@ -8,7 +8,7 @@ import joblib
 """
 to control the program,
 control the paths and start to train or test
-shell (*.sh) in '../script' would run this file  
+shell (*.sh) in 'script' would run this file  
 """
 
 
@@ -22,8 +22,8 @@ def get_args():
     parser = argparse.ArgumentParser(description='Run the models')
     parser.add_argument('gpu', type=str, default='0', help='set CUDA_VISIBLE_DEVICES')
 
-    parser.add_argument('--data_directory', type=str, default='../data', help='original data directory')
-    parser.add_argument('--save_directory', type=str, default='../result', help='Save data directory')
+    parser.add_argument('--data_directory', type=str, default='../../data', help='original data directory')
+    parser.add_argument('--save_directory', type=str, default='../../result', help='Save data directory')
 
     parser.add_argument('--load_model', type=bool, default=False, help='whether to load model already exist')
     parser.add_argument('--model_name', type=str, default='SLRC_BPR', help='the name of model')
@@ -31,7 +31,7 @@ def get_args():
     # the path of data set should be data_directory/dataset_name
     # the model would be saved to save_directory/model_name
 
-    parser.add_argument('--corpus_directory', type=str, default='../data', help='the path of directory of corpus')
+    parser.add_argument('--corpus_directory', type=str, default='../../data', help='the path of directory of corpus')
     parser.add_argument('--load_corpus', type=bool, default=False, help='whether to load corpus already exist')
     # the name of corpus would be corpus_directory/dataset_name+'.pkl'
     # if load_corpus is False the path is the save path
@@ -48,6 +48,7 @@ def get_args():
 
     # arguments for reader
     parser.add_argument('--sep', default='\t', help='sep of data set file')
+    parser.add_argument('--time_scale', type=int, default=24*7*10, help='the time scale')
 
     # arguments for runner
     parser.add_argument('--epoch', type=int, default=200,
