@@ -102,7 +102,7 @@ class SLRC(nn.Module):
         """
         return 0
 
-    def loss(self, out_dict: dict):
+    def loss(self, out_dict: dict)->torch.Tensor:
         """
         loss function
         :return:
@@ -112,3 +112,19 @@ class SLRC(nn.Module):
         neg = predictions[:, 1]
         loss = -(pos - neg).sigmoid().log().mean()
         return loss
+
+    def classify_params(self):
+        """
+        since l2 should not effect on the bias and weight decay effect on the all parameters,
+        need to divided weights and bias
+        :return:
+        """
+        result=[{'params':list()},{'params':list(),'weight_decay':0}]
+        for name,param in self.named_parameters():
+            if param.requires_grad:
+                if 'bias' in name:
+                    result[1]['params'].append(param)
+                else:
+                    result[0]['params'].append(param)
+        return result
+

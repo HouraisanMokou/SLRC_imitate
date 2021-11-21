@@ -33,23 +33,6 @@ def count_var(m:nn.Module)->int:
     """
     pass
 
-def divde_params(m:nn.Module)->dict:
-    """
-    divide param into two parts: weights and bias
-    use for optimizer
-    :param m: the target module
-    :return: a dict {'weights':list of weight, 'bias':list of bias}
-    """
-    pass
-
-def actions_before_epoch(model:nn.Module,data:dataset)->NoReturn:
-    """
-    do something before each epoch
-    prepare neg_item list for the epoch
-    :param model:
-    :return:
-    """
-    pass
 
 def actions_before_train(model:nn.Module,data:dataset)->NoReturn:  # e.g., re-initial some special parameters
     """
@@ -85,5 +68,14 @@ def print_res(self, runner, data: dataset) -> str:
     construct the res for runner before and after training
     :param self:
     :param data:
+    :return:
+    """
+
+def ndcg_cal(self,gt:list,pred:dict):
+    """
+    calculate ndcg
+    :param self:
+    :param gt:
+    :param pred:
     :return:
     """

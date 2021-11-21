@@ -61,6 +61,8 @@ def get_args():
     parser.add_argument('--eval_batch_size', type=int, default=256, help='batch size while testing')
     parser.add_argument('--emb_size', type=int, default=64, help='the length of embedding vector')
     parser.add_argument('--time_scale', type=int, default=256, help='the scale for time intervals')
+    parser.add_argument('--num_workers', type=int, default=0, help='workers of io used in loading data')
+    parser.add_argument('--pin_memory', type=int, default=1, help='the length of embedding vector')
     args = parser.parse_known_args()
     return args
 

@@ -7,7 +7,7 @@ root = '../data/data_order/order.txt'
 
 def process_files(src: str):
     """
-    process the src file into data in 4 files: train.csv, test.csv, val.csv
+    process the src file into data in 3 files: train.csv, test.csv, val.csv
     the formats of each files:
 
     train.csv: user_id \t item_id \t time
