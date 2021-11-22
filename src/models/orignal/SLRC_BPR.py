@@ -7,6 +7,7 @@ import torch.distributions as distributions
 import torch.nn.functional as F
 from torch.utils.data import Dataset as BaseDataset
 from torch.nn.utils.rnn import pad_sequence
+from torch.distributions import normal, exponential
 from typing import NoReturn, List
 
 import os
@@ -18,7 +19,7 @@ from src.models.SLRC import SLRC
 
 class SLRC_BPR(SLRC):
     def _init_hawks_weights(self):
-        self.global_alpha = nn.Parameter(torch.tensor(0.))
+        self.global_alpha = nn.Parameter(torch.tensor(1.))
         self.alpha = nn.Embedding(self.item_num, 1)
         self.pi = nn.Embedding(self.item_num, 1)
         self.beta = nn.Embedding(self.item_num, 1)
@@ -34,10 +35,26 @@ class SLRC_BPR(SLRC):
         :param feed_dict:
         :return:
         """
+        items = feed_dict['item_id']  # the 1st is tested and other is neg
+        time_interval = feed_dict['time_intervals']
+        mask=(time_interval>0).float()
+
+        alpha_b = self.alpha(items)
+        alpha = self.global_alpha + alpha_b
+        beta = self.beta(items) + 1
+        pi = self.pi(items) + 0.5
+        mu = self.mu(items) + 1  # may fix later
+        sigma = self.sigma(items) + 1
+        exp=exponential.Exponential(beta,validate_args=False)
+        norm=normal.Normal(mu,sigma,validate_args=False)
+
+        gamma=pi*(exp.log_prob(time_interval).exp())+(1-pi)*(norm.log_prob(time_interval).exp())
+        excit= (gamma*alpha*mask).sum(-1)
+        return excit
 
     def _forward_CF(self, feed_dict):
-        users = feed_dict['users']
-        items = feed_dict['items']
+        users = feed_dict['user_id']
+        items = feed_dict['item_id']
         u_vector = self.user_embed(users)
         i_vector = self.item_embed(items)
 

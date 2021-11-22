@@ -50,11 +50,12 @@ class SLRC(nn.Module):
         self.model_path = os.path.join(args.save_directory, args.model_name, args.model_file_name)
         self.optimizer = None
 
+        self.logger = args.logger
+
         super(SLRC, self).__init__()
 
         self._define_weights()
         self.total_param = count_var(self)
-
 
     def _define_weights(self) -> NoReturn:
         """
@@ -63,6 +64,7 @@ class SLRC(nn.Module):
         """
         self._init_cf_weights()
         self._init_hawks_weights()
+        self.logger.info('parameters is inited')
 
     def _init_cf_weights(self) -> NoReturn:
         """
@@ -84,8 +86,8 @@ class SLRC(nn.Module):
         """
         :return:
         """
-        base = self.forward_excit(feed_dict)
-        excitation = self.forward_excit(feed_dict)
+        base = self._forward_CF(feed_dict)
+        excitation = self._forward_excit(feed_dict)
         prediction = base + excitation
         return {'prediction': prediction}
 
@@ -103,7 +105,7 @@ class SLRC(nn.Module):
         """
         return 0
 
-    def loss(self, out_dict: dict)->torch.Tensor:
+    def loss(self, out_dict: dict) -> torch.Tensor:
         """
         loss function
         :return:
@@ -120,8 +122,8 @@ class SLRC(nn.Module):
         need to divided weights and bias
         :return:
         """
-        result=[{'params':list()},{'params':list(),'weight_decay':0}]
-        for name,param in self.named_parameters():
+        result = [{'params': list()}, {'params': list(), 'weight_decay': 0}]
+        for name, param in self.named_parameters():
             if param.requires_grad:
                 if 'bias' in name:
                     result[1]['params'].append(param)
@@ -129,12 +131,13 @@ class SLRC(nn.Module):
                     result[0]['params'].append(param)
         return result
 
+
 class Dataset(BaseDataset):
     """
     the dataset class, let dataloader to load
     the format:
 
-    {'users':list of int,'items':list of int,'neg':list,'time':list of pad_sequence }
+    {'users':list of int,'items':list of int,'neg_items':list,'time':list of pad_sequence }
     notice that the length of neg is different in train test and val
     in train is 1
     in test or val is longer
@@ -147,6 +150,8 @@ class Dataset(BaseDataset):
         """
         self.corpus = corpus
         self.model = model
+
+        self.phase = phase
 
         self.data_dict = corpus.dataset_dict[phase]
 
@@ -165,15 +170,19 @@ class Dataset(BaseDataset):
         """
         u = self.data_dict['user_id'][index]
         i = self.data_dict['item_id'][index]
-        if self.data_dict['neg'] is None:
+        if self.data_dict['neg_items'] is None:
             self.shuffle_neg()
-        n = self.data_dict['neg'][index]
+        n = self.data_dict['neg_items'][index]
         ti = self.data_dict['time_interval'][index]
-        n, ti = np.array(n), np.array(ti)
+        if type(n)==str:
+            n = eval(n)
+        n.insert(0,i)
+        i=n
+        i, n, ti =np.array(i), np.array(n), np.array(ti)
         feed_dict = {
             'user_id': u,
             'item_id': i,
-            'neg': n,
+            # 'neg_items': n,
             'time_interval': ti
         }
         return feed_dict
@@ -185,21 +194,17 @@ class Dataset(BaseDataset):
         :param feed_dict_list:
         :return:
         """
-        data=[(d['user_id'],d['item_id'],d['neg'],d['time_interval'],len(d['time_interval']))for d in feed_dict_list]
-        data=list(zip(*data))
+        data = [(d['user_id'], d['item_id'], d['time_interval']) for d in
+                feed_dict_list]
+        data = list(zip(*data))
         users = np.array(data[0])
         items = np.array(data[1])
-        negs = np.array(data[2])
-        time_intervals = data[3]
-        lengths = data[4]
-        lengths = torch.from_numpy(np.array(lengths))
-        time_intervals=[torch.tensor(ti).float() for ti in time_intervals]
-        p=pad_sequence(time_intervals,batch_first=True)
-
+        time_intervals = data[2]
+        time_intervals = [torch.tensor(ti).float() for ti in time_intervals]
+        p = pad_sequence(time_intervals)
         feed_dict = {
             'user_id': torch.from_numpy(users),
             'item_id': torch.from_numpy(items),
-            'negs': torch.from_numpy(negs),
             'time_intervals': p
         }
         return feed_dict
@@ -211,10 +216,10 @@ class Dataset(BaseDataset):
         :return:
         """
 
-        neg = np.zeros(len(self))
+        neg = [list()for _ in range(len(self))]
         for i in range(len(self)):
             tmp = np.random.randint(0, self.corpus.n_items)
             while tmp in self.corpus.user_his[self.data_dict['user_id'][i]].keys():
                 tmp = np.random.randint(0, self.corpus.n_items)
-            neg[i] = tmp
-        self.data_dict['neg'] = neg
+            neg[i].append(tmp)
+        self.data_dict['neg_items'] = neg

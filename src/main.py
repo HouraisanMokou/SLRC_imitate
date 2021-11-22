@@ -8,6 +8,7 @@ import numpy as np
 import joblib
 import torch.random
 
+from src.common.runner import Runner
 from src.common.reader import Reader
 from src.models.SLRC import SLRC,Dataset
 from src.models.orignal.SLRC_BPR import SLRC_BPR
@@ -84,7 +85,23 @@ def run(args):
                  stop, lr, l2, batch_size, eval_batch_size, max_history_length
     :return:
     """
-    pass
+
+    logger=args.logger
+    logger.info('setting up runner')
+    runner=Runner(args)
+    logger.info('')
+
+    if args.stage=='train':
+        logger.info('start to train')
+        runner.train()
+    else:
+        if(args.load_model):
+            logger.info('start to test')
+            runner.evaluate(args.datasets['test'])
+        else:
+            logger.info('break down as for no model to load')
+
+
 
 
 def main(args):
@@ -123,18 +140,25 @@ def main(args):
     # read data
     logger.info('reading data')
     reader=Reader(args)
-    logger.info('read data finished\n')
+    logger.info('')
 
     # build model
     logger.info('building model')
     model_class=eval(args.model_name)
     model=model_class(args,reader)
+    setattr(args, 'model',model)
     logger.info(model)
 
+
+
     # build dataset
+    logger.info('')
     datasets=dict()
     for k in ['train','test','val']:
         datasets[k]=Dataset(reader,model,k)
+    setattr(args,'datasets',datasets)
+
+    run(args)
 
 
 
@@ -147,8 +171,9 @@ if __name__ == '__main__':
     debug_on=True
     if debug_on:
         args.dataset_name='debug'
-        args.emb_size=2
-        args.epoch=1
+        args.emb_size=20
+        args.epoch=10
         args.l2=1
+        args.test_epoch=2
 
     main(args)
