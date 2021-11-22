@@ -7,8 +7,8 @@ import pandas as pd
 import torch
 from torch import nn
 import copy
+import logging
 
-from torch.utils.data import Dataset as base_dataset
 from typing import NoReturn, List
 import pickle
 from torch.nn.utils.rnn import pad_sequence, pack_padded_sequence, pad_packed_sequence
@@ -28,6 +28,8 @@ class Reader():
         self.data_prefix = os.path.join(args.data_directory, args.dataset_name)
         self.sep = args.sep
         self.time_scale = args.time_scale
+
+        self.logger=args.logger
 
         if not self.load_corpus:
             self._read_data()
@@ -64,6 +66,7 @@ class Reader():
                 self.clicks.add(click)
             self.df_dict[k] = df
 
+        self.logger.info('collecting user history')
         self.items_per_user = [set() for _ in range(self.n_users)]
         self.user_his = [dict() for _ in range(self.n_users)]
         for c in self.clicks:
@@ -72,6 +75,8 @@ class Reader():
                 self.user_his[c[0]][c[1]] = list()
             self.user_his[c[0]][c[1]].append(c[2])
         self.dataset_dict = dict()
+
+        self.logger.info('calculating time intervals')
         for k in ['train', 'test', 'val']:
             df = self.df_dict[k]
             time_interval = [list() for _ in range(len(df))]
@@ -117,112 +122,24 @@ class Reader():
         f.close()
 
 
-class Dataset(base_dataset):
-    """
-    the dataset class, let dataloader to load
-    the format:
-
-    {'users':list of int,'items':list of int,'neg':list,'time':list of pad_sequence }
-    notice that the length of neg is different in train test and val
-    in train is 1
-    in test or val is longer
-    """
-
-    def __init__(self, corpus: Reader, model: nn.Module, phase):
-        """
-        :param corpus:
-        :param model:
-        """
-        self.corpus = corpus
-        self.model = model
-
-        self.data_dict = corpus.dataset_dict[phase]
-
-    def __len__(self):
-        """
-        overwrite the len()
-        :return:
-        """
-        return len(self.data_dict['user_id'])
-
-    def __getitem__(self, index: int) -> dict:
-        """
-        overwrite the getitem()
-        :param index:
-        :return:
-        """
-        u = self.data_dict['user_id'][index]
-        i = self.data_dict['item_id'][index]
-        if self.data_dict['neg'] is None:
-            self.shuffle_neg()
-        n = self.data_dict['neg'][index]
-        ti = self.data_dict['time_interval'][index]
-        n, ti = np.array(n), np.array(ti)
-        feed_dict = {
-            'user_id': u,
-            'item_id': i,
-            'neg': n,
-            'time_interval': ti
-        }
-        return feed_dict
-
-    def _collate_batch(self, feed_dict_list: List[dict]) -> dict:
-        """
-        to turn several feed_dict to a batched one
-        the dataloader would use this
-        :param feed_dict_list:
-        :return:
-        """
-        data=[(d['user_id'],d['item_id'],d['neg'],d['time_interval'],len(d['time_interval']))for d in feed_dict_list]
-        data=list(zip(*data))
-        users = np.array(data[0])
-        items = np.array(data[1])
-        negs = np.array(data[2])
-        time_intervals = data[3]
-        lengths = data[4]
-        lengths = torch.from_numpy(np.array(lengths))
-        time_intervals=[torch.tensor(ti).float() for ti in time_intervals]
-        p=pad_sequence(time_intervals,batch_first=True)
-
-        feed_dict = {
-            'user_id': torch.from_numpy(users),
-            'item_id': torch.from_numpy(items),
-            'negs': torch.from_numpy(negs),
-            'time_intervals': p
-        }
-        return feed_dict
-
-    def shuffle_neg(self) -> NoReturn:
-        """
-        do something before each epoch
-        prepare neg_item list for the epoch
-        :return:
-        """
-
-        neg = np.zeros(len(self))
-        for i in range(len(self)):
-            tmp = np.random.randint(0, self.corpus.n_items)
-            while tmp in self.corpus.user_his[self.data_dict['user_id'][i]].keys():
-                tmp = np.random.randint(0, self.corpus.n_items)
-            neg[i] = tmp
-        self.data_dict['neg'] = neg
 
 
-if __name__ == '__main__':
-    class args:
-        load_corpus = False
-        corpus_directory = '../../data'
-        dataset_name = 'debug'
-        data_directory = '../../data'
-        sep = '\t'
-        time_scale = 1#3600 * 7 * 24 * 10
 
-
-    c = Reader(args)
-    d = Dataset(corpus=c, model=None, phase='train')
-    f1 = d.__getitem__(0)
-    f2 = d.__getitem__(1)
-    f3 = d.__getitem__(2)
-    dd = d._collate_batch([f1, f2,f3])
-    print(dd)
+# if __name__ == '__main__':
+#     class args:
+#         load_corpus = False
+#         corpus_directory = '../../data'
+#         dataset_name = 'debug'
+#         data_directory = '../../data'
+#         sep = '\t'
+#         time_scale = 1#3600 * 7 * 24 * 10
+#
+#
+#     c = Reader(args)
+#     d = Dataset(corpus=c, model=None, phase='train')
+#     f1 = d.__getitem__(0)
+#     f2 = d.__getitem__(1)
+#     f3 = d.__getitem__(2)
+#     dd = d._collate_batch([f1, f2,f3])
+#     print(dd)
 

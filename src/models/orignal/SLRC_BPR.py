@@ -41,5 +41,5 @@ class SLRC_BPR(SLRC):
         u_vector = self.user_embed(users)
         i_vector = self.item_embed(items)
 
-        base = (u_vector[:, :, None] * i_vector).sum(-1)  # the dim of users and items is not the same
+        base = (u_vector[:, None, :] * i_vector).sum(-1)  # the dim of users and items is not the same
         return base

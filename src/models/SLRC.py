@@ -40,7 +40,6 @@ class SLRC(nn.Module):
         :param args: arguments get in main.py
         :param corpus: reader, with information of data and statistics on data
         """
-        self.max_history_length = args.max_history_length
 
         self.emb_size = args.emb_size
         self.time_scale = args.time_scale
@@ -51,9 +50,11 @@ class SLRC(nn.Module):
         self.model_path = os.path.join(args.save_directory, args.model_name, args.model_file_name)
         self.optimizer = None
 
+        super(SLRC, self).__init__()
+
         self._define_weights()
         self.total_param = count_var(self)
-        super(SLRC, self).__init__()
+
 
     def _define_weights(self) -> NoReturn:
         """
@@ -128,3 +129,92 @@ class SLRC(nn.Module):
                     result[0]['params'].append(param)
         return result
 
+class Dataset(BaseDataset):
+    """
+    the dataset class, let dataloader to load
+    the format:
+
+    {'users':list of int,'items':list of int,'neg':list,'time':list of pad_sequence }
+    notice that the length of neg is different in train test and val
+    in train is 1
+    in test or val is longer
+    """
+
+    def __init__(self, corpus: Reader, model: nn.Module, phase):
+        """
+        :param corpus:
+        :param model:
+        """
+        self.corpus = corpus
+        self.model = model
+
+        self.data_dict = corpus.dataset_dict[phase]
+
+    def __len__(self):
+        """
+        overwrite the len()
+        :return:
+        """
+        return len(self.data_dict['user_id'])
+
+    def __getitem__(self, index: int) -> dict:
+        """
+        overwrite the getitem()
+        :param index:
+        :return:
+        """
+        u = self.data_dict['user_id'][index]
+        i = self.data_dict['item_id'][index]
+        if self.data_dict['neg'] is None:
+            self.shuffle_neg()
+        n = self.data_dict['neg'][index]
+        ti = self.data_dict['time_interval'][index]
+        n, ti = np.array(n), np.array(ti)
+        feed_dict = {
+            'user_id': u,
+            'item_id': i,
+            'neg': n,
+            'time_interval': ti
+        }
+        return feed_dict
+
+    def _collate_batch(self, feed_dict_list: List[dict]) -> dict:
+        """
+        to turn several feed_dict to a batched one
+        the dataloader would use this
+        :param feed_dict_list:
+        :return:
+        """
+        data=[(d['user_id'],d['item_id'],d['neg'],d['time_interval'],len(d['time_interval']))for d in feed_dict_list]
+        data=list(zip(*data))
+        users = np.array(data[0])
+        items = np.array(data[1])
+        negs = np.array(data[2])
+        time_intervals = data[3]
+        lengths = data[4]
+        lengths = torch.from_numpy(np.array(lengths))
+        time_intervals=[torch.tensor(ti).float() for ti in time_intervals]
+        p=pad_sequence(time_intervals,batch_first=True)
+
+        feed_dict = {
+            'user_id': torch.from_numpy(users),
+            'item_id': torch.from_numpy(items),
+            'negs': torch.from_numpy(negs),
+            'time_intervals': p
+        }
+        return feed_dict
+
+    def shuffle_neg(self) -> NoReturn:
+        """
+        do something before each epoch
+        prepare neg_item list for the epoch
+        :return:
+        """
+
+        neg = np.zeros(len(self))
+        for i in range(len(self)):
+            tmp = np.random.randint(0, self.corpus.n_items)
+            while tmp in self.corpus.user_his[self.data_dict['user_id'][i]].keys():
+                tmp = np.random.randint(0, self.corpus.n_items)
+            neg[i] = tmp
+        self.data_dict['neg'] = neg

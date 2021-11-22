@@ -1,9 +1,16 @@
+import logging
 import os
+import random
 import sys
 import time
 import argparse
 import numpy as np
 import joblib
+import torch.random
+
+from src.common.reader import Reader
+from src.models.SLRC import SLRC,Dataset
+from src.models.orignal.SLRC_BPR import SLRC_BPR
 
 """
 to control the program,
@@ -20,9 +27,10 @@ def get_args():
 
     # arguments for IO/ controlling
     parser = argparse.ArgumentParser(description='Run the models')
-    parser.add_argument('gpu', type=str, default='0', help='set CUDA_VISIBLE_DEVICES')
 
-    parser.add_argument('--data_directory', type=str, default='../../data', help='original data directory')
+    parser.add_argument('--gpu', type=str, default='0', help='set CUDA_VISIBLE_DEVICES')
+
+    parser.add_argument('--data_directory', type=str, default='../data', help='original data directory')
     parser.add_argument('--save_directory', type=str, default='../../result', help='Save data directory')
 
     parser.add_argument('--load_model', type=bool, default=False, help='whether to load model already exist')
@@ -31,7 +39,7 @@ def get_args():
     # the path of data set should be data_directory/dataset_name
     # the model would be saved to save_directory/model_name
 
-    parser.add_argument('--corpus_directory', type=str, default='../../data', help='the path of directory of corpus')
+    parser.add_argument('--corpus_directory', type=str, default='../data', help='the path of directory of corpus')
     parser.add_argument('--load_corpus', type=bool, default=False, help='whether to load corpus already exist')
     # the name of corpus would be corpus_directory/dataset_name+'.pkl'
     # if load_corpus is False the path is the save path
@@ -61,23 +69,10 @@ def get_args():
     parser.add_argument('--batch_size', type=int, default=256, help='batch size while training/ validating')
     parser.add_argument('--eval_batch_size', type=int, default=256, help='batch size while testing')
     parser.add_argument('--emb_size', type=int, default=64, help='the length of embedding vector')
-    parser.add_argument('--time_scale', type=int, default=256, help='the scale for time intervals')
     parser.add_argument('--num_workers', type=int, default=0, help='workers of io used in loading data')
     parser.add_argument('--pin_memory', type=int, default=1, help='the length of embedding vector')
-    args = parser.parse_known_args()
+    args,unknown = parser.parse_known_args()
     return args
-
-
-def make_corpus(args):
-    """
-    to make corpus by calling the common.reader
-    if load_corpus is True, load corpus from path
-    otherwise, load data from data directory and save to corpus path
-    :param args: arguments.
-    relate with: corpus_directory, load_corpus, sep, data_directory, dataset_name
-    :return:
-    """
-    pass
 
 
 def run(args):
@@ -101,9 +96,59 @@ def main(args):
     :param args: the arguments gets from get_args
     :return: no return
     """
-    pass
+    # set random seed
+    random.seed(args.random_state)
+    np.random.seed(args.random_state)
+    torch.manual_seed(args.random_state)
+    torch.cuda.manual_seed(args.random_state)
+    torch.backends.cudnn.deterministic = True
+
+    # prepare hardware
+    os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu
+    # prepare logging
+    if args.logging_file_name=='':
+        args.logging_file_name=os.path.join(args.logging_directory,'{}@{}_{}.txt'.format(
+            args.model_name,args.dataset_name,time.strftime('%Y.%m.%d',time.localtime())))
+    logger=logging.getLogger(__name__)
+    logger.setLevel(level=logging.INFO)
+    file_handler=logging.FileHandler(args.logging_file_name)
+    file_handler.setLevel(logging.INFO)
+    console = logging.StreamHandler()
+    console.setLevel(logging.INFO)
+    logger.addHandler(file_handler)
+    logger.addHandler(console)
+    logger.info('{}: start to logging\n'.format(time.strftime('%Y.%m.%d_%H:%M:%S',time.localtime())))
+    setattr(args,'logger',logger)
+
+    # read data
+    logger.info('reading data')
+    reader=Reader(args)
+    logger.info('read data finished\n')
+
+    # build model
+    logger.info('building model')
+    model_class=eval(args.model_name)
+    model=model_class(args,reader)
+    logger.info(model)
+
+    # build dataset
+    datasets=dict()
+    for k in ['train','test','val']:
+        datasets[k]=Dataset(reader,model,k)
+
+
+
 
 
 if __name__ == '__main__':
     args = get_args()
+
+    #debug mode
+    debug_on=True
+    if debug_on:
+        args.dataset_name='debug'
+        args.emb_size=2
+        args.epoch=1
+        args.l2=1
+
     main(args)
