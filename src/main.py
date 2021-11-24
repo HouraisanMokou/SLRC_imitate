@@ -171,9 +171,9 @@ if __name__ == '__main__':
     debug_on=True
     if debug_on:
         args.dataset_name='debug'
-        args.emb_size=20
-        args.epoch=10
-        args.l2=1
+        args.emb_size=512
+        args.epoch=200
+        args.l2=0.5
         args.test_epoch=2
 
     main(args)

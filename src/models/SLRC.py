@@ -1,3 +1,5 @@
+import copy
+
 import torch
 import logging
 import numpy as np
@@ -174,10 +176,16 @@ class Dataset(BaseDataset):
             self.shuffle_neg()
         n = self.data_dict['neg_items'][index]
         ti = self.data_dict['time_interval'][index]
-        if type(n)==str:
-            n = eval(n)
-        n.insert(0,i)
-        i=n
+        # if type(n)==str:
+        #     n = eval(n)
+        tmp=copy.deepcopy(n)
+        tmp.insert(0,i)
+        i=tmp
+
+        t=[ti]
+        for ni in n:
+            t.append([0 for _ in range(len(ti))])
+        ti=t
         i, n, ti =np.array(i), np.array(n), np.array(ti)
         feed_dict = {
             'user_id': u,
@@ -200,8 +208,8 @@ class Dataset(BaseDataset):
         users = np.array(data[0])
         items = np.array(data[1])
         time_intervals = data[2]
-        time_intervals = [torch.tensor(ti).float() for ti in time_intervals]
-        p = pad_sequence(time_intervals)
+        time_intervals = torch.tensor(time_intervals)
+        p = time_intervals
         feed_dict = {
             'user_id': torch.from_numpy(users),
             'item_id': torch.from_numpy(items),

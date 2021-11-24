@@ -59,12 +59,14 @@ class Reader():
 
         for k in ['train', 'test', 'val']:
             df = pd.read_csv(os.path.join(self.data_prefix, '{}.csv'.format(k)), sep=self.sep)
+
             self.n_users = max(self.n_users, df['user_id'].max() + 1)
             self.n_items = max(self.n_items, df['item_id'].max() + 1)
             df['time'] = df['time'] / self.time_scale
             for click in zip(df['user_id'], df['item_id'], df['time']):
                 self.clicks.add(click)
             self.df_dict[k] = df
+
 
         self.logger.info('collecting user history')
         self.items_per_user = [set() for _ in range(self.n_users)]
@@ -77,17 +79,22 @@ class Reader():
         self.dataset_dict = dict()
 
         self.logger.info('calculating time intervals')
+        self.time_max_length = 0
         for k in ['train', 'test', 'val']:
             df = self.df_dict[k]
             time_interval = [list() for _ in range(len(df))]
+
             for idx,rec in enumerate(zip(df['user_id'], df['item_id'], df['time'])):
                 tmp_his = copy.deepcopy(self.user_his[rec[0]][rec[1]])
                 tmp_his = rec[2] - np.array(tmp_his)
                 for i in range(len(tmp_his)):
                     if tmp_his[i] > 0:
                         time_interval[idx].append(tmp_his[i])
+                self.time_max_length=max(self.time_max_length,len(time_interval[idx]))
             for ti in time_interval:
-                ti.sort()
+                while len(ti)<self.time_max_length:
+                    ti.append(0)
+
             df['time_interval'] = time_interval
             if k == 'train':
                 tmp = df.to_dict()
@@ -95,6 +102,10 @@ class Reader():
                 self.dataset_dict[k] = tmp
             else:
                 self.dataset_dict[k] = df.to_dict()
+                for keys in self.dataset_dict[k].keys():
+                    if type(self.dataset_dict[k][keys][0])==str:
+                        for _ in range(len(self.dataset_dict[k][keys])):
+                            self.dataset_dict[k][keys][_] = eval(self.dataset_dict[k][keys][_])
 
     def _load_corpus(self) -> NoReturn:
         """
