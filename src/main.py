@@ -10,8 +10,10 @@ import torch.random
 
 from src.common.runner import Runner
 from src.common.reader import Reader
-from src.models.SLRC import SLRC,Dataset
+from src.models.SLRC import SLRC
 from src.models.orignal.SLRC_BPR import SLRC_BPR
+from src.models.orignal.SLRC_NCF import SLRC_NCF
+from src.models.orignal.SLRC_Tensor import SLRC_Tensor
 
 """
 to control the program,
@@ -65,7 +67,7 @@ def get_args():
     parser.add_argument('--test_epoch', type=int, default=-1,
                         help='test with a period of some epoch (-1 means no test)')
     parser.add_argument('--stop', type=int, default=5, help='stop cnt when accuracy down continuously')
-    parser.add_argument('--lr', type=float, default=1e-3, help='learning rate')
+    parser.add_argument('--lr', type=float, default=1e-4, help='learning rate')
     parser.add_argument('--l2', type=float, default=0, help='l2 regularization in optimizer')
     parser.add_argument('--batch_size', type=int, default=256, help='batch size while training/ validating')
     parser.add_argument('--eval_batch_size', type=int, default=256, help='batch size while testing')
@@ -155,7 +157,7 @@ def main(args):
     logger.info('')
     datasets=dict()
     for k in ['train','test','val']:
-        datasets[k]=Dataset(reader,model,k)
+        datasets[k]=model_class.Dataset(reader,model,k)
     setattr(args,'datasets',datasets)
 
     run(args)
@@ -171,9 +173,10 @@ if __name__ == '__main__':
     debug_on=True
     if debug_on:
         args.dataset_name='debug'
-        args.emb_size=512
+        args.emb_size=100
         args.epoch=200
-        args.l2=0.5
-        args.test_epoch=2
+        args.l2=1e-3
+        args.test_epoch=1
+        args.model_name='SLRC_Tensor'
 
     main(args)

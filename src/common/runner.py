@@ -8,7 +8,6 @@ import torch.optim
 from tqdm import tqdm
 
 from src.models.SLRC import SLRC
-from src.models.SLRC import Dataset
 from typing import NoReturn,List
 from torch.utils.data import DataLoader
 from torch import nn
@@ -36,7 +35,7 @@ class Runner():
         self.logger.info('register device: {}'.format(self.device))
 
 
-    def evaluate(self,dataset:Dataset)->dict:
+    def evaluate(self,dataset:SLRC.Dataset)->dict:
         """
         evaluate on val or test set
         :param: dataset: test or val
@@ -50,7 +49,7 @@ class Runner():
         return {'acc':acc,'ndcg':ndcg}
 
 
-    def predict(self,dataset:Dataset)->np.ndarray:
+    def predict(self,dataset:SLRC.Dataset)->np.ndarray:
         """
         predict on val or test
         :param dataset: the dataset to be test
@@ -83,7 +82,7 @@ class Runner():
                 # time.sleep(1)
         return np.array(predict_list)
 
-    def fit(self,dataset:Dataset)->float:
+    def fit(self,dataset:SLRC.Dataset)->float:
         """
         train part in a epoch
         return the used time
@@ -181,7 +180,7 @@ class Runner():
                 return True
             pos=len(eval_list)-1-i
             ndcg=eval_list[pos]['ndcg']
-            if ndcg<last:
+            if ndcg<=last:
                 return False
             last=ndcg
 

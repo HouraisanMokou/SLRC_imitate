@@ -57,12 +57,16 @@ class Reader():
         self.n_items = 0
         self.clicks = set()
 
+        self.max_time=-np.inf
+        self.min_time=np.inf
         for k in ['train', 'test', 'val']:
             df = pd.read_csv(os.path.join(self.data_prefix, '{}.csv'.format(k)), sep=self.sep)
 
             self.n_users = max(self.n_users, df['user_id'].max() + 1)
             self.n_items = max(self.n_items, df['item_id'].max() + 1)
             df['time'] = df['time'] / self.time_scale
+            self.max_time=max(df['time'].max(),self.max_time)
+            self.min_time = min(df['time'].min(), self.min_time)
             for click in zip(df['user_id'], df['item_id'], df['time']):
                 self.clicks.add(click)
             self.df_dict[k] = df
