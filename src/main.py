@@ -172,11 +172,12 @@ if __name__ == '__main__':
     #debug mode
     debug_on=True
     if debug_on:
-        args.dataset_name='debug'
-        args.emb_size=100
+        args.dataset_name='test_order'
+        args.emb_size=256
+        args.batch_size=256
         args.epoch=200
         args.l2=1e-3
-        args.test_epoch=1
-        args.model_name='SLRC_Tensor'
+        args.test_epoch=2
+        args.model_name='SLRC_BPR'
 
     main(args)

@@ -29,7 +29,7 @@ class Reader():
         self.sep = args.sep
         self.time_scale = args.time_scale
 
-        self.logger=args.logger
+        self.logger = args.logger
 
         if not self.load_corpus:
             self._read_data()
@@ -57,20 +57,19 @@ class Reader():
         self.n_items = 0
         self.clicks = set()
 
-        self.max_time=-np.inf
-        self.min_time=np.inf
+        self.max_time = -np.inf
+        self.min_time = np.inf
         for k in ['train', 'test', 'val']:
             df = pd.read_csv(os.path.join(self.data_prefix, '{}.csv'.format(k)), sep=self.sep)
 
             self.n_users = max(self.n_users, df['user_id'].max() + 1)
             self.n_items = max(self.n_items, df['item_id'].max() + 1)
             df['time'] = df['time'] / self.time_scale
-            self.max_time=max(df['time'].max(),self.max_time)
+            self.max_time = max(df['time'].max(), self.max_time)
             self.min_time = min(df['time'].min(), self.min_time)
             for click in zip(df['user_id'], df['item_id'], df['time']):
                 self.clicks.add(click)
             self.df_dict[k] = df
-
 
         self.logger.info('collecting user history')
         self.items_per_user = [set() for _ in range(self.n_users)]
@@ -88,15 +87,16 @@ class Reader():
             df = self.df_dict[k]
             time_interval = [list() for _ in range(len(df))]
 
-            for idx,rec in enumerate(zip(df['user_id'], df['item_id'], df['time'])):
+            for idx, rec in tqdm(enumerate(zip(df['user_id'], df['item_id'], df['time'])), leave=False,
+                                 desc='time interval building for {}'.format(k), mininterval=0.1, ncols=100):
                 tmp_his = copy.deepcopy(self.user_his[rec[0]][rec[1]])
                 tmp_his = rec[2] - np.array(tmp_his)
                 for i in range(len(tmp_his)):
                     if tmp_his[i] > 0:
                         time_interval[idx].append(tmp_his[i])
-                self.time_max_length=max(self.time_max_length,len(time_interval[idx]))
+                self.time_max_length = max(self.time_max_length, len(time_interval[idx]))
             for ti in time_interval:
-                while len(ti)<self.time_max_length:
+                while len(ti) < self.time_max_length:
                     ti.append(0)
 
             df['time_interval'] = time_interval
@@ -107,7 +107,7 @@ class Reader():
             else:
                 self.dataset_dict[k] = df.to_dict()
                 for keys in self.dataset_dict[k].keys():
-                    if type(self.dataset_dict[k][keys][0])==str:
+                    if type(self.dataset_dict[k][keys][0]) == str:
                         for _ in range(len(self.dataset_dict[k][keys])):
                             self.dataset_dict[k][keys][_] = eval(self.dataset_dict[k][keys][_])
 
@@ -132,13 +132,10 @@ class Reader():
         info_dict['items_per_user'] = self.items_per_user
         info_dict['user_his'] = self.user_his
         info_dict['dataset_dict'] = self.dataset_dict
+        info_dict['time_max_length'] = self.time_max_length
         f = open(self.corpus_path, 'wb')
         pickle.dump(info_dict, f)
         f.close()
-
-
-
-
 
 # if __name__ == '__main__':
 #     class args:
@@ -157,4 +154,3 @@ class Reader():
 #     f3 = d.__getitem__(2)
 #     dd = d._collate_batch([f1, f2,f3])
 #     print(dd)
-

@@ -37,13 +37,13 @@ class SLRC_BPR(SLRC):
         """
         items = feed_dict['item_id']  # the 1st is tested and other is neg
         time_interval = feed_dict['time_intervals']
-        mask=(time_interval>=0).float()
+        mask=(time_interval>0).float()
 
         alpha_b = self.alpha(items)
         alpha = self.global_alpha + alpha_b
         beta = (self.beta(items) + 1).clamp(min=1e-10,max=10)
-        pi = self.pi(items) + 0.5
-        mu = self.mu(items) + 1  # may fix later
+        pi = (self.pi(items) + 0.5).clamp(min=1e-10,max=1)
+        mu = (self.mu(items) + 1).clamp(min=1e-10)  # may fix later
         sigma = (self.sigma(items) + 1).clamp(min=1e-10,max=10)
         exp=exponential.Exponential(beta,validate_args=False)
         norm=normal.Normal(mu,sigma,validate_args=False)
