@@ -9,7 +9,7 @@ import os
 import pandas as pd
 
 root = '../data/data_order/order.txt'
-target = '../data/test_order'
+target = '../data/test_order4'
 
 
 def process_order_files(src: str):
@@ -36,19 +36,26 @@ def process_order_files(src: str):
     df = pd.read_csv(root, header=None, sep='\t')
 
     use_count = df[0].value_counts()
-    df = df[df[0].isin(use_count[use_count > 5].index)]
+
+    df = df[df[0].isin(use_count[use_count > (2*use_count.std())].index)]
     item_count = df[1].value_counts()
-    df = df[df[1].isin(item_count[item_count > 4].index)]
+    df = df[df[1].isin(item_count[item_count > 2].index)]
+
+
     df = df.reset_index(drop=True)
+    df=df.head(820000)
     print(len(df))
-    idx = df[[0, 1]].value_counts()
-    idx = set(idx[idx > 1].index)
+    print(df[0].value_counts())
+    print(df[1].value_counts())
+    # idx = df[[0, 1]].value_counts()
+    # idx = set(idx[idx > 1].index)
     tmp_clicks = list()
     for c_idx, click in tqdm(enumerate(zip(df[0], df[1], df[3])), leave=False, desc='first pass', total=len(df),
                              ncols=100, mininterval=0.1):
         u, i, t = click
-        if (u, i) in idx:
-            tmp_clicks.append(click)
+        tmp_clicks.append(click)
+        # if (u, i) in idx:
+        #     tmp_clicks.append(click)
 
     # change the index of u and i
     clicks = list()
@@ -71,11 +78,13 @@ def process_order_files(src: str):
         iid = items[i]
         clicks.append((uid, iid, t))
         if uid not in user_purchase_dict.keys():
-            user_purchase_dict[uid]=set()
-        user_purchase_dict[uid].add(iid)
+            user_purchase_dict[uid]=dict()
+        if t not in user_purchase_dict[uid].keys():
+            user_purchase_dict[uid][t]=set()
+        user_purchase_dict[uid][t].add(iid)
 
     random.shuffle(clicks)
-    train_size = int(np.round(len(clicks) * 0.9))
+    train_size = int(np.round(len(clicks) * 0.75))
     test_size = int(np.round(len(clicks) * 0.05))
     # print(clicks)
     dataset={
@@ -104,7 +113,7 @@ def process_order_files(src: str):
     ed = time.time()
     print(ed - st)
 
-neg_len=999
+neg_len=99
 def shuffle_neg(df, dataset, n_item, user_purchase_dict):
     """
     :param df:
@@ -115,7 +124,7 @@ def shuffle_neg(df, dataset, n_item, user_purchase_dict):
         total_pool.add(i)
     negs=list()
     for click in tqdm(dataset,leave=False, desc='find neg', ncols=100, total=len(dataset), mininterval=0.01):
-        pool=total_pool.difference(user_purchase_dict[click[0]])
+        pool=total_pool.difference(user_purchase_dict[click[0]][click[2]])
         neg=np.random.choice(list(pool),replace=False,size=neg_len)
         neg=list(neg)
         # for idx in range(neg_len):

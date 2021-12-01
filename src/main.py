@@ -14,6 +14,9 @@ from src.models.SLRC import SLRC
 from src.models.orignal.SLRC_BPR import SLRC_BPR
 from src.models.orignal.SLRC_NCF import SLRC_NCF
 from src.models.orignal.SLRC_Tensor import SLRC_Tensor
+from src.models.orignal.BPR import BPR
+from src.models.orignal.SRC_BPR import SRC_BPR
+from src.models.orignal.LRC_BPR import LRC_BPR
 
 """
 to control the program,
@@ -59,7 +62,7 @@ def get_args():
 
     # arguments for reader
     parser.add_argument('--sep', default='\t', help='sep of data set file')
-    parser.add_argument('--time_scale', type=int, default=24*7*10, help='the time scale')
+    parser.add_argument('--time_scale', type=int, default=24 * 7 * 10, help='the time scale')
 
     # arguments for runner
     parser.add_argument('--epoch', type=int, default=200,
@@ -74,7 +77,7 @@ def get_args():
     parser.add_argument('--emb_size', type=int, default=64, help='the length of embedding vector')
     parser.add_argument('--num_workers', type=int, default=0, help='workers of io used in loading data')
     parser.add_argument('--pin_memory', type=int, default=1, help='the length of embedding vector')
-    args,unknown = parser.parse_known_args()
+    args, unknown = parser.parse_known_args()
     return args
 
 
@@ -88,22 +91,20 @@ def run(args):
     :return:
     """
 
-    logger=args.logger
+    logger = args.logger
     logger.info('setting up runner')
-    runner=Runner(args)
+    runner = Runner(args)
     logger.info('')
 
-    if args.stage=='train':
+    if args.stage == 'train':
         logger.info('start to train')
         runner.train()
     else:
-        if(args.load_model):
+        if (args.load_model):
             logger.info('start to test')
             runner.evaluate(args.datasets['test'])
         else:
             logger.info('break down as for no model to load')
-
-
 
 
 def main(args):
@@ -125,59 +126,61 @@ def main(args):
     # prepare hardware
     os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu
     # prepare logging
-    if args.logging_file_name=='':
-        args.logging_file_name=os.path.join(args.logging_directory,'{}@{}_{}.txt'.format(
-            args.model_name,args.dataset_name,time.strftime('%Y.%m.%d',time.localtime())))
-    logger=logging.getLogger(__name__)
+    if args.logging_file_name == '':
+        args.logging_file_name = os.path.join(args.logging_directory, '{}@{}_{}.txt'.format(
+            args.model_name, args.dataset_name, time.strftime('%Y.%m.%d', time.localtime())))
+    logger = logging.getLogger(__name__)
     logger.setLevel(level=logging.INFO)
-    file_handler=logging.FileHandler(args.logging_file_name)
+    file_handler = logging.FileHandler(args.logging_file_name)
     file_handler.setLevel(logging.INFO)
     console = logging.StreamHandler()
     console.setLevel(logging.INFO)
     logger.addHandler(file_handler)
     logger.addHandler(console)
-    logger.info('{}: start to logging\n'.format(time.strftime('%Y.%m.%d_%H:%M:%S',time.localtime())))
-    setattr(args,'logger',logger)
+    logger.info('{}: start to logging\n'.format(time.strftime('%Y.%m.%d_%H:%M:%S', time.localtime())))
+    setattr(args, 'logger', logger)
 
     # read data
     logger.info('reading data')
-    reader=Reader(args)
+    if not args.load_corpus:
+        reader = Reader(args)
+    else:
+        reader = Reader._load_corpus(os.path.join(args.corpus_directory, args.dataset_name, args.dataset_name + '.pkl'))
     logger.info('')
 
     # build model
     logger.info('building model')
-    model_class=eval(args.model_name)
-    model=model_class(args,reader)
-    setattr(args, 'model',model)
+    model_class = eval(args.model_name)
+    model = model_class(args, reader)
+    model.apply(model._weight_inits)
+    setattr(args, 'model', model)
     logger.info(model)
-
-
 
     # build dataset
     logger.info('')
-    datasets=dict()
-    for k in ['train','test','val']:
-        datasets[k]=model_class.Dataset(reader,model,k)
-    setattr(args,'datasets',datasets)
+    datasets = dict()
+    for k in ['train', 'test', 'val']:
+        datasets[k] = model_class.Dataset(reader, model, k)
+    setattr(args, 'datasets', datasets)
 
     run(args)
-
-
-
 
 
 if __name__ == '__main__':
     args = get_args()
 
-    #debug mode
-    debug_on=True
+    # debug mode
+    debug_on = True
     if debug_on:
-        args.dataset_name='test_order'
-        args.emb_size=256
-        args.batch_size=256
-        args.epoch=200
-        args.l2=1e-3
-        args.test_epoch=2
-        args.model_name='SLRC_BPR'
+        args.dataset_name = 'test_order4'  # 'Grocery_and_Gourmet_Food'
+        args.emb_size = 100
+        args.batch_size = 256
+        args.epoch = 200
+        args.l2 = 1e-4
+        args.lr=5e-5
+        args.test_epoch = 1
+        args.stop=5
+        args.model_name = 'SLRC_BPR'
+        args.load_corpus=True
 
     main(args)

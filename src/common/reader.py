@@ -31,11 +31,10 @@ class Reader():
 
         self.logger = args.logger
 
-        if not self.load_corpus:
-            self._read_data()
-            self._save_corpus()
-        else:
-            self._load_corpus()
+        self.known_test_when_trian=True
+        self._read_data()
+        self._save_corpus()
+
 
     def _read_data(self) -> NoReturn:
         """
@@ -56,6 +55,11 @@ class Reader():
         self.n_users = 0
         self.n_items = 0
         self.clicks = set()
+        self.set_clicks = {
+            'train':set(),
+            'test':set(),
+            'val':set()
+        }
 
         self.max_time = -np.inf
         self.min_time = np.inf
@@ -69,72 +73,124 @@ class Reader():
             self.min_time = min(df['time'].min(), self.min_time)
             for click in zip(df['user_id'], df['item_id'], df['time']):
                 self.clicks.add(click)
+                self.set_clicks[k].add(click)
             self.df_dict[k] = df
 
+        self.time_max_length = 0
         self.logger.info('collecting user history')
         self.items_per_user = [set() for _ in range(self.n_users)]
         self.user_his = [dict() for _ in range(self.n_users)]
+        self.user_his_set = {
+            'train':[dict() for _ in range(self.n_users)],
+            'test':[dict() for _ in range(self.n_users)],
+            'val':[dict() for _ in range(self.n_users)]
+        }
+        for k in ['train', 'test', 'val']:
+            for c in self.set_clicks[k]:
+                self.items_per_user[c[0]].add(c[1])
+                if c[1] not in self.user_his_set[k][c[0]].keys():
+                    self.user_his_set[k][c[0]][c[1]] = list()
+                self.user_his_set[k][c[0]][c[1]].append(c[2])
         for c in self.clicks:
             self.items_per_user[c[0]].add(c[1])
             if c[1] not in self.user_his[c[0]].keys():
                 self.user_his[c[0]][c[1]] = list()
             self.user_his[c[0]][c[1]].append(c[2])
+            self.time_max_length = max(self.time_max_length, len(self.user_his[c[0]][c[1]]))
         self.dataset_dict = dict()
 
         self.logger.info('calculating time intervals')
-        self.time_max_length = 0
+
+        time_intervals = dict()
+        self.max_consider_length=20
+        self.time_max_length = min(self.time_max_length,self.max_consider_length)
         for k in ['train', 'test', 'val']:
             df = self.df_dict[k]
-            time_interval = [list() for _ in range(len(df))]
+            time_interval = list()
 
-            for idx, rec in tqdm(enumerate(zip(df['user_id'], df['item_id'], df['time'])), leave=False,
-                                 desc='time interval building for {}'.format(k), mininterval=0.1, ncols=100):
-                tmp_his = copy.deepcopy(self.user_his[rec[0]][rec[1]])
-                tmp_his = rec[2] - np.array(tmp_his)
-                for i in range(len(tmp_his)):
-                    if tmp_his[i] > 0:
-                        time_interval[idx].append(tmp_his[i])
-                self.time_max_length = max(self.time_max_length, len(time_interval[idx]))
-            for ti in time_interval:
-                while len(ti) < self.time_max_length:
-                    ti.append(0)
+            if k == 'train':
+                his=self.user_his if self.known_test_when_trian else self.user_his_set[k]
+                for idx, rec in tqdm(enumerate(zip(df['user_id'], df['item_id'], df['time'])), leave=False,
+                                     desc='time interval building for {}'.format(k), mininterval=0.1, ncols=100,
+                                     total=len(df)):
+                    tmp_his = copy.deepcopy(his[rec[0]][rec[1]])
+                    tmp_his = rec[2] - np.array(tmp_his)
+                    tmp=tmp_his[tmp_his>0]
+                    tmp.sort()
+                    tmp=tmp[:self.max_consider_length]
+                    time_interval.append(tmp)
+                for i in tqdm(range(len(time_interval)), leave=False, desc='pad the time intervals', mininterval=0.01,
+                              ncols=100,total=len(time_interval)):
+                    ti = time_interval[i]
+                    time_interval[i] = [np.pad(ti, (0, self.time_max_length - len(ti))), np.zeros(self.time_max_length)]
+            else:
+                his = self.user_his if self.known_test_when_trian else self.user_his_set[k]
+                for idx, rec in tqdm(enumerate(zip(df['user_id'], df['item_id'], df['neg_items'], df['time'])),
+                                     leave=False,
+                                     desc='time interval building for {}'.format(k), mininterval=0.1, ncols=100,
+                                     total=len(df)):
+                    tmp_his = copy.deepcopy(his[rec[0]][rec[1]])
+                    tmp_his = rec[3] - np.array(tmp_his)
+                    tmp=tmp_his[tmp_his>0]
+                    tmp.sort()
+                    tmp = tmp[:self.max_consider_length]
+                    ti = [tmp]
+                    for i in eval(rec[2]):
+                        if i not in self.user_his[rec[0]].keys():
+                            ti.append([])
+                        else:
+                            tmp_his = copy.deepcopy(self.user_his[rec[0]][i])
+                            tmp_his = rec[3] - np.array(tmp_his)
+                            tmp = tmp_his[tmp_his > 0]
+                            tmp.sort()
+                            tmp = tmp[:self.max_consider_length]
+                            ti.append(tmp)
+                    time_interval.append(ti)
+                for i in tqdm(range(len(time_interval)), desc='pad the time intervals in {} set'.format(k), leave=False,
+                              mininterval=0.01, ncols=100,
+                              total=len(time_interval)):
+                    tis = time_interval[i]
+                    for j in range(len(tis)):
+                        ti = tis[j]
+                        tis[j] = np.pad(ti, (0, self.time_max_length - len(ti))).astype(np.float32)
+                    time_interval[i] = tis
 
-            df['time_interval'] = time_interval
+            time_intervals[k] = time_interval
+
+        self.logger.info('')
+        for k in ['train', 'test', 'val']:
+            df = self.df_dict[k]
+            df['time_interval'] = time_intervals[k]
             if k == 'train':
                 tmp = df.to_dict()
-                tmp['neg'] = None
+                tmp['neg_items'] = None
                 self.dataset_dict[k] = tmp
             else:
                 self.dataset_dict[k] = df.to_dict()
                 for keys in self.dataset_dict[k].keys():
                     if type(self.dataset_dict[k][keys][0]) == str:
-                        for _ in range(len(self.dataset_dict[k][keys])):
+                        for _ in tqdm(range(len(self.dataset_dict[k][keys])), leave=False,
+                                      desc='convert data form in {} set'.format(k), mininterval=0.1,
+                                      ncols=100, total=len(self.dataset_dict[k][keys])):
                             self.dataset_dict[k][keys][_] = eval(self.dataset_dict[k][keys][_])
-
-    def _load_corpus(self) -> NoReturn:
+    @staticmethod
+    def _load_corpus(file_path):
         """
         load corpus from local corpus
         the format is shown before
         can implement this method later
         :return:
         """
+        f = open(file_path,'rb')
+        return pickle.load(f)
 
     def _save_corpus(self) -> NoReturn:
         """
         save corpus from local corpus
         :return:
         """
-        info_dict = dict()
-        info_dict['df_dict'] = self.df_dict
-        info_dict['n_users'] = self.n_users
-        info_dict['n_items'] = self.n_items
-        info_dict['clicks'] = self.clicks
-        info_dict['items_per_user'] = self.items_per_user
-        info_dict['user_his'] = self.user_his
-        info_dict['dataset_dict'] = self.dataset_dict
-        info_dict['time_max_length'] = self.time_max_length
         f = open(self.corpus_path, 'wb')
-        pickle.dump(info_dict, f)
+        pickle.dump(self, f)
         f.close()
 
 # if __name__ == '__main__':

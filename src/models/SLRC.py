@@ -115,7 +115,11 @@ class SLRC(nn.Module):
         predictions = out_dict['prediction']
         pos = predictions[:, 0]
         neg = predictions[:, 1]
-        loss = -(pos - neg).sigmoid().log().mean()
+        l1 = (pos - neg).sigmoid()
+        l2 = l1.log()
+        l3 = l2.mean()
+        loss = -l3
+
         return loss
 
     def classify_params(self):
@@ -182,10 +186,10 @@ class SLRC(nn.Module):
             tmp.insert(0,i)
             i=tmp
 
-            t=[ti]
-            for ni in n:
-                t.append([0 for _ in range(len(ti))])
-            ti=t
+            # t=[ti]
+            # # for ni in n:
+            # #     t.append([0 for _ in range(len(ti))])
+            # ti=t
             i, n, ti =np.array(i), np.array(n), np.array(ti)
             feed_dict = {
                 'user_id': u,
@@ -207,8 +211,8 @@ class SLRC(nn.Module):
             data = list(zip(*data))
             users = np.array(data[0])
             items = np.array(data[1])
-            time_intervals = data[2]
-            time_intervals = torch.tensor(time_intervals)
+            time_intervals = np.array(data[2])
+            time_intervals = torch.from_numpy(time_intervals)
             p = time_intervals
             feed_dict = {
                 'user_id': torch.from_numpy(users),

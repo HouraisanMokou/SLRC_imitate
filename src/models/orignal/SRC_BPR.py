@@ -17,14 +17,12 @@ from src.common.constants import *
 from src.common.reader import Reader
 from src.models.SLRC import SLRC
 
-class SLRC_BPR(SLRC):
+
+class SRC_BPR(SLRC):
     def _init_hawks_weights(self):
         self.global_alpha = nn.Parameter(torch.tensor(1.))
         self.alpha = nn.Embedding(self.item_num, 1)
-        self.pi = nn.Embedding(self.item_num, 1)
         self.beta = nn.Embedding(self.item_num, 1)
-        self.mu = nn.Embedding(self.item_num, 1)
-        self.sigma = nn.Embedding(self.item_num, 1)
 
     def _init_cf_weights(self) -> NoReturn:
         self.user_embed = nn.Embedding(self.user_num, self.emb_size)
@@ -42,17 +40,12 @@ class SLRC_BPR(SLRC):
         alpha_b = self.alpha(items)
         alpha = (self.global_alpha).clamp(min=1e-10,max=10) + alpha_b
         beta = (self.beta(items) + 1).clamp(min=1e-10,max=10)
-        pi = self.pi(items) + 0.5
-        mu = self.mu(items) + 1 # may fix later
-        sigma = (self.sigma(items) + 1).clamp(min=1e-10,max=10)
         exp=exponential.Exponential(beta,validate_args=False)
-        norm=normal.Normal(mu,sigma,validate_args=False)
+
 
         dt=time_interval
-        gamma1=pi*(exp.log_prob(dt).exp())
-        gamma2=(1-pi)*(norm.log_prob(dt).exp())
-        gamma=gamma1+gamma2
-        excit1=alpha*gamma
+        gamma1=(exp.log_prob(dt).exp())
+        excit1=alpha*gamma1
         excit2=excit1*mask
         excit= (excit2).sum(-1)
         return excit

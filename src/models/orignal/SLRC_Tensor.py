@@ -72,7 +72,7 @@ class SLRC_Tensor(SLRC):
         s1=(u_vector[:, None, :] * i_vector).sum(-1)
         t2 = (u_vector * u_t_vector).sum(-1)
         s3 = (i_vector * i_t_vector[:,None,:]).sum(-1)
-        s2=t2[:,None].expand(-1,s1.size()[1])
+        s2=t2[:,None].repeat(1,s3.size()[1])
 
 
         base =s1+s2+s3 # the dim of users and items is not the same
@@ -95,26 +95,25 @@ class SLRC_Tensor(SLRC):
             if self.data_dict['neg_items'] is None:
                 self.shuffle_neg()
             n = self.data_dict['neg_items'][index]
-            time = self.data_dict['time'][index]
-
             ti = self.data_dict['time_interval'][index]
+            time=self.data_dict['time'][index]
             # if type(n)==str:
             #     n = eval(n)
             tmp=copy.deepcopy(n)
             tmp.insert(0,i)
             i=tmp
 
-            t=[ti]
-            for ni in n:
-                t.append([0 for _ in range(len(ti))])
-            ti=t
+            # t=[ti]
+            # # for ni in n:
+            # #     t.append([0 for _ in range(len(ti))])
+            # ti=t
             i, n, ti =np.array(i), np.array(n), np.array(ti)
             feed_dict = {
                 'user_id': u,
                 'item_id': i,
                 # 'neg_items': n,
-                'time_bin':time//self.bin_width,
-                'time_interval': ti
+                'time_interval': ti,
+                'time_bin':(time-self.corpus.min_time)//self.bin_width
             }
             return feed_dict
 
@@ -130,14 +129,14 @@ class SLRC_Tensor(SLRC):
             data = list(zip(*data))
             users = np.array(data[0])
             items = np.array(data[1])
-            time_intervals = data[2]
+            time_intervals = np.array(data[2])
             time=np.array(data[3]).astype(int)
-            time_intervals = torch.tensor(time_intervals)
+            time_intervals = torch.from_numpy(time_intervals)
             p = time_intervals
             feed_dict = {
                 'user_id': torch.from_numpy(users),
                 'item_id': torch.from_numpy(items),
                 'time_intervals': p,
-                'time_bin':torch.from_numpy(time),
+                'time_bin':torch.from_numpy(time)
             }
             return feed_dict
