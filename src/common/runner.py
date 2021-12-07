@@ -113,6 +113,7 @@ class Runner():
 
             out = model(batch)
             loss = model.loss(out)
+            model.optimizer.zero_grad()
             loss.backward()
             model.optimizer.step()
 
