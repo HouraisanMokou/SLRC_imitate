@@ -7,7 +7,7 @@ import torch.optim
 
 from tqdm import tqdm
 
-from src.models.SLRC import SLRC
+from models.SLRC import SLRC
 from typing import NoReturn, List
 from torch.utils.data import DataLoader
 from torch import nn
@@ -83,7 +83,7 @@ class Runner():
                 # time.sleep(1)
         return predict_list
 
-    def fit(self, dataset: SLRC.Dataset) -> (float, float):
+    def fit(self, dataset: SLRC.Dataset):
         """
         train part in a epoch
         return the used time

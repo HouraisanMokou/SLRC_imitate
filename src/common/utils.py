@@ -2,7 +2,7 @@ import torch.nn as nn
 import torch.utils.data.dataset as dataset
 from typing import NoReturn
 
-import src.common.reader as reader
+import common.reader as reader
 
 """
 Auxiliary Methods of Models

@@ -12,10 +12,10 @@ from typing import NoReturn, List
 
 import os
 
-from src.common.utils import *
-from src.common.constants import *
-from src.common.reader import Reader
-from src.models.SLRC import SLRC
+from common.utils import *
+from common.constants import *
+from common.reader import Reader
+from models.SLRC import SLRC
 
 class SLRC_BPR(SLRC):
     def _init_hawks_weights(self):
