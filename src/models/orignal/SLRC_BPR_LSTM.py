@@ -18,14 +18,15 @@ from common.reader import Reader
 from models.SLRC import SLRC
 
 
-class SLRC_BPR(SLRC):
+class SLRC_BPR_LSTM(SLRC):
     def _init_hawks_weights(self):
-        self.global_alpha = nn.Parameter(torch.tensor(1.0))
-        self.alpha = nn.Embedding(self.item_num, 1)
-        self.pi = nn.Embedding(self.item_num, 1)
-        self.beta = nn.Embedding(self.item_num, 1)
-        self.mu = nn.Embedding(self.item_num, 1)
-        self.sigma = nn.Embedding(self.item_num, 1)
+        self.sk = 0.01
+
+        # self.hidden_dim = 32
+        # self.linear = nn.Linear(self.hidden_dim * 2, self.hidden_dim * 7, bias=True)
+        self.h_0i = nn.Embedding(self.item_num, 3)
+        self.c_0i = nn.Embedding(self.item_num, 3)
+        self.lstm = nn.LSTM(input_size=1, hidden_size=1, num_layers=3, batch_first=True)
 
     def _init_cf_weights(self) -> NoReturn:
         self.user_embed = nn.Embedding(self.user_num, self.emb_size)
@@ -40,22 +41,25 @@ class SLRC_BPR(SLRC):
         time_interval = feed_dict["time_intervals"] / TIME_SCALE
         mask = (time_interval > 0).float()
 
-        alpha_b = self.alpha(items)
-        alpha = self.global_alpha + alpha_b
-        beta = (self.beta(items) + 1).clamp(min=1e-10, max=10)
-        pi = self.pi(items).clamp(min=1e-10, max=1)
-        mu = self.mu(items)  # may fix later
-        sigma = (self.sigma(items) + 1).clamp(min=1e-10, max=10)
-        exp = exponential.Exponential(beta, validate_args=False)
-        norm = normal.Normal(mu, sigma, validate_args=False)
-
-        dt = time_interval
-        gamma1 = pi * (exp.log_prob(dt).exp())
-        gamma2 = (1 - pi) * (norm.log_prob(dt).exp())
-        gamma = gamma1 + gamma2
-        excit1 = alpha * gamma
-        excit2 = excit1 * mask
-        excit = (excit2).sum(-1)
+        h0 = self.h_0i(items)
+        c0 = self.c_0i(items)
+        # h0=torch.permute(h0,(1,0,2))
+        # c0 = torch.permute(c0, (1, 0, 2))
+        # time_interval=torch.permute(time_interval, (0, 2, 1))
+        # hs = self.lstm(time_interval,(h0,c0))
+        ti2 = time_interval.view(-1, time_interval.shape[2]).float().contiguous()
+        h02 = h0.view(-1, h0.shape[2])
+        c02 = c0.view(-1, c0.shape[2])
+        ti2 = ti2[:, :, None]
+        h02 = h02[:, :, None]
+        c02 = c02[:, :, None]
+        h02 = torch.permute(h02, (1, 0, 2)).contiguous()
+        c02 = torch.permute(c02, (1, 0, 2)).contiguous()
+        hs = self.lstm(ti2, (h02, c02))[0]
+        hs = hs.squeeze()
+        hs = hs.view(-1, time_interval.shape[1], time_interval.shape[2])
+        hs = hs * mask
+        excit = torch.sum(hs, 2)
         return excit
 
     def _forward_CF(self, feed_dict):

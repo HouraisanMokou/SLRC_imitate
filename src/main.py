@@ -17,6 +17,10 @@ from models.orignal.SLRC_Tensor import SLRC_Tensor
 from models.orignal.BPR import BPR
 from models.orignal.SRC_BPR import SRC_BPR
 from models.orignal.LRC_BPR import LRC_BPR
+from models.orignal.MLP_BPR import MLP_BPR
+from models.orignal.MLP_BPR_2 import MLP_BPR_2
+from models.orignal.SLRC_BPR_LSTM import SLRC_BPR_LSTM
+from models.orignal.SLRC_BPR_LSTM_2 import SLRC_BPR_LSTM_2
 
 """
 to control the program,
@@ -113,18 +117,18 @@ def get_args():
     parser.add_argument(
         "--stop", type=int, default=5, help="stop cnt when accuracy down continuously"
     )
-    parser.add_argument("--lr", type=float, default=1e-4, help="learning rate")
+    parser.add_argument("--lr", type=float, default=1e-3, help="learning rate")
     parser.add_argument(
-        "--l2", type=float, default=0, help="l2 regularization in optimizer"
+        "--l2", type=float, default=2e-4, help="l2 regularization in optimizer"
     )
     parser.add_argument(
         "--batch_size",
         type=int,
-        default=256,
+        default=512,
         help="batch size while training/ validating",
     )
     parser.add_argument(
-        "--eval_batch_size", type=int, default=256, help="batch size while testing"
+        "--eval_batch_size", type=int, default=512, help="batch size while testing"
     )
     parser.add_argument(
         "--emb_size", type=int, default=64, help="the length of embedding vector"
@@ -246,13 +250,13 @@ if __name__ == "__main__":
     if debug_on:
         args.dataset_name = "test_order4"  # 'Grocery_and_Gourmet_Food'
         args.emb_size = 100
-        args.batch_size = 1024
-        args.epoch = 100
-        args.l2 = 1e-4
-        args.lr = 4e-5
+        args.batch_size = 512
+        args.epoch = 42
+        args.l2 = 1e-5
+        args.lr = 1e-5
         args.test_epoch = 1
         args.stop = 5
-        args.model_name = "SLRC_BPR"
-        args.load_corpus = False
+        args.model_name = "MLP_BPR_2"
+        args.load_corpus = True
 
     main(args)
